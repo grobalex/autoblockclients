@@ -9,6 +9,9 @@ import configparser
 #    Should be called from API    #
 ###################################
 
+def get_ips(table):
+    return _getIPs(table)
+
 def block(client_ip, ip_to_block):
     '''
     Tries to _connect to the database and if successful tries to write
@@ -21,6 +24,16 @@ def block(client_ip, ip_to_block):
     else:
         _catch_errors((client_ip, ip_to_block, "block", "Client tried to add ip to the block table but it is on the cannot block list"))
         return "Error - Cannot block this IP"
+
+
+def un_block(client_ip, ip_to_unblock):
+    '''
+    Tries to _connect to the database and if successful tries to write
+    to table. If unsuccessful will log error in the errors table and
+    send a slack message
+    '''
+    sql = "INSERT INTO `unblock_ips` (`client_ip`, `unblock_ip`) VALUES (%s, %s)"
+    return _write(sql, (client_ip, ip_to_block), "block")       
 
 def add_to_cannot_block(cannot_block_ip):
     '''
@@ -107,11 +120,21 @@ def _send_to_slack(msg):
     config.read("config.ini")
     requests.post(config.get("configuration","slack"), json={'text': msg})
 
+def _getIPs(table):
+    '''
+    Gets all incomplete IPs from block or unblock table 
+    '''
+    if table != "blocked_ips" or table != "unblock_ips":
+        return _read("SELECT `ip` FROM `%s` WHERE `complete`= 0", (table,))
+    else:
+        return "Error"
+
+
 ## IP BLOCK DB METHODS ##
 
 def _can_block(ip_to_block):
     '''
-    Checks the ip against the cannot be block DB table and throws an
+    Checks the ip against the cannot be blocked DB table and throws an
     error if we try to block that IP.
     '''
     return _read("SELECT `ip` FROM `cannot_block` WHERE `ip`=%s", (ip_to_block,)) is None

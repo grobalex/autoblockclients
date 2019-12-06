@@ -2,7 +2,7 @@ import bottle
 from bottle import request, response
 from bottle import post, get, put, delete
 import re, json
-from db_connector import block, add_to_cannot_block
+from db_connector import unblock, block, add_to_cannot_block
 
 ip_pattern = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 
@@ -30,6 +30,21 @@ def block_handler():
     #response.headers['Content-Type'] = 'application/json'
     return json.dumps({'Status': status})
 
+@post('/unblock')
+def unblock_handler():
+    '''Handles a block request'''
+    try:
+        data = _validate_ip(request.POST)
+    except ValueError:
+        response.status = 400
+        return json.dumps({'Error': ValueError})
+    client_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR')
+    status = un_block(client_ip, data)
+    #response.headers['Content-Type'] = 'application/json'
+    return json.dumps({'Status': status})
+
+
+#find better name
 @post('/add')
 def add_handler():
     '''Handles a add request'''
